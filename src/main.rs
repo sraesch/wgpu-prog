@@ -1,14 +1,12 @@
 use canvas::create_and_run_canvas;
 use event_handler::EventHandler;
-use log::{info, trace, debug};
+use log::{debug, error, info, trace, LevelFilter};
 
 mod canvas;
 mod error;
 mod event_handler;
 
-struct Handler {
-
-}
+struct Handler {}
 
 impl EventHandler for Handler {
     fn setup(&mut self, width: u32, height: u32) -> Result<(), Box<dyn std::error::Error>> {
@@ -34,16 +32,30 @@ impl EventHandler for Handler {
     }
 
     fn mouse_button(&mut self, x: f64, y: f64, button: winit::event::MouseButton, pressed: bool) {
-        debug!("Mouse button {:?} at x {} and y {} was {}", button, x, y, if pressed { "pressed" } else { "released" });
+        debug!(
+            "Mouse button {:?} at x {} and y {} was {}",
+            button,
+            x,
+            y,
+            if pressed { "pressed" } else { "released" }
+        );
     }
 
     fn keyboard_event(&mut self, key: winit::keyboard::Key, pressed: bool) {
-        debug!("Key {:?} was {}", key, if pressed { "pressed" } else { "released" });
+        debug!(
+            "Key {:?} was {}",
+            key,
+            if pressed { "pressed" } else { "released" }
+        );
     }
 }
 
+fn initialize_logging(filter: LevelFilter) {
+    env_logger::builder().filter_level(filter).init();
+}
+
 fn main() {
-    env_logger::init();
+    initialize_logging(LevelFilter::Info);
 
     let options = canvas::CanvasOptions {
         width: 800,
@@ -52,5 +64,10 @@ fn main() {
     };
 
     let handler = Handler {};
-    create_and_run_canvas(options, handler).unwrap();
+
+    pollster::block_on(async {
+        if let Err(err) = create_and_run_canvas(options, handler).await {
+            error!("Error: {}", err);
+        }
+    });
 }
